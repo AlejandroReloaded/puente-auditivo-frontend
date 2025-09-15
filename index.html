@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puente Auditivo - Autenticación y Roles</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .recording-indicator { width: 10px; height: 10px; background-color: red; border-radius: 50%; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        .screen { display: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div id="app-container" class="w-full max-w-5xl mx-auto p-4 md:p-8">
+
+        <div id="login-screen" class="screen bg-white p-8 rounded-2xl shadow-md text-center max-w-md mx-auto">
+            <h1 class="text-4xl font-bold text-blue-600 mb-2">Puente Auditivo</h1>
+            <p class="text-slate-500 mb-8">Inicia sesión para continuar</p>
+            <form id="login-form" class="space-y-4">
+                <input type="email" id="login-email" placeholder="Correo Electrónico" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" required>
+                <input type="password" id="login-password" placeholder="Contraseña" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" required>
+                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Iniciar Sesión</button>
+            </form>
+            <p id="login-error" class="text-red-500 mt-4 hidden"></p>
+        </div>
+
+        <div id="admin-dashboard-screen" class="screen">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-slate-700">Panel de Administrador</h1>
+                <button id="admin-logout-btn" class="flex items-center gap-2 bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
+                    Cerrar Sesión
+                </button>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-md mb-6">
+                <h2 class="text-xl font-semibold mb-4 text-slate-700">Crear Nuevo Usuario</h2>
+                <form id="create-user-form" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <input type="email" id="new-user-email" placeholder="Correo" class="px-4 py-2 border rounded-lg" required>
+                    <input type="password" id="new-user-password" placeholder="Contraseña" class="px-4 py-2 border rounded-lg" required>
+                    <select id="new-user-role" class="px-4 py-2 border rounded-lg" required>
+                        <option value="student">Estudiante</option>
+                        <option value="student_special">Estudiante con Capacidades Diferentes</option>
+                        <option value="professor">Profesor</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                    <button type="submit" class="md:col-span-3 w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700">Crear Usuario</button>
+                </form>
+                 <p id="admin-action-feedback" class="text-green-600 mt-4 text-center"></p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-slate-700">Usuarios Registrados</h2>
+                <div id="user-list" class="space-y-2">
+                </div>
+            </div>
+        </div>
+        
+        <div id="professor-dashboard-screen" class="screen text-center">
+             <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-slate-700">Panel de Profesor</h1>
+                <button id="prof-logout-btn" class="flex items-center gap-2 bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
+                    Cerrar Sesión
+                </button>
+            </div>
+            <div class="bg-white p-8 rounded-2xl shadow-md">
+                <p class="text-slate-500 mb-6">Crea una nueva sesión de clase para que tus estudiantes se unan.</p>
+                <button id="create-session-btn" class="w-full max-w-xs mx-auto bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700">
+                    Crear Nueva Sesión
+                </button>
+            </div>
+        </div>
+
+        <div id="student-dashboard-screen" class="screen text-center">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-slate-700">Panel de Estudiante</h1>
+                <button id="stud-logout-btn" class="flex items-center gap-2 bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
+                    Cerrar Sesión
+                </button>
+            </div>
+            <div class="bg-white p-8 rounded-2xl shadow-md">
+                <p class="text-slate-500 mb-6">Ingresa el código de la sesión para unirte a la clase.</p>
+                <div class="flex gap-2 max-w-xs mx-auto">
+                    <input type="text" id="session-id-input" placeholder="Código de la sesión" class="w-full px-4 py-3 border rounded-lg">
+                    <button id="join-session-btn" class="bg-slate-800 text-white font-bold py-3 px-6 rounded-lg hover:bg-slate-900">
+                        Unirse
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="classroom-screen" class="screen">
+            <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-200">
+                <div>
+                    <h1 class="text-3xl font-bold text-slate-800">Sesión Activa</h1>
+                    <p class="text-slate-500 mt-1">Código de la sesión: <strong id="session-id-display" class="font-mono text-slate-900 bg-slate-200 px-2 py-1 rounded-md cursor-pointer" title="Copiar código"></strong></p>
+                </div>
+                <button id="leave-session-btn" class="flex items-center gap-2 bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
+                    <span>Salir</span>
+                </button>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white p-8 rounded-2xl shadow-md">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-slate-700">Transcripción en Vivo</h2>
+                        <div id="professor-controls" class="hidden flex items-center gap-3">
+                            <button id="mic-btn" class="flex items-center gap-2 bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-emerald-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
+                                <div id="mic-indicator" class="hidden recording-indicator"></div>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" /><path d="M5.5 8.5a.5.5 0 01.5.5v1.5a4 4 0 004 4h0a4 4 0 004-4V9a.5.5 0 011 0v1.5a5 5 0 01-4.5 4.975V17h3a.5.5 0 010 1h-7a.5.5 0 010-1h3v-1.525A5 5 0 015 10.5V9a.5.5 0 01.5-.5z" /></svg>
+                                <span id="mic-text">Iniciar</span>
+                            </button>
+                            <button class="save-class-btn bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M9.25 13.25a.75.75 0 001.5 0V4.636l2.955 3.129a.75.75 0 001.09-1.03l-4.25-4.5a.75.75 0 00-1.09 0l-4.25 4.5a.75.75 0 101.09 1.03L9.25 4.636v8.614z" /><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" /></svg>
+                                <span>Guardar</span>
+                            </button>
+                            <button id="toggle-download-btn" class="bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors">Activar Descargas</button>
+                        </div>
+                    </div>
+                    <textarea id="transcript-box" class="h-96 w-full overflow-y-auto bg-slate-100 p-4 rounded-lg border border-slate-200 text-lg leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"></textarea>
+                </div>
+                <div class="bg-white p-8 rounded-2xl shadow-md flex flex-col">
+                    <h2 class="text-xl font-semibold mb-4 text-slate-700">Comunicación</h2>
+                    <div id="student-controls" class="hidden flex-grow flex flex-col">
+                        <textarea id="question-input" class="w-full flex-grow p-3 border border-slate-300 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" placeholder="Escribe tu pregunta..."></textarea>
+                        <button id="send-question-btn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-colors">Enviar Pregunta</button>
+                        
+                        <button id="student-save-btn" style="display: none;" class="save-class-btn mt-3 bg-slate-700 text-white font-bold py-3 rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
+                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M9.25 13.25a.75.75 0 001.5 0V4.636l2.955 3.129a.75.75 0 001.09-1.03l-4.25-4.5a.75.75 0 00-1.09 0l-4.25 4.5a.75.75 0 101.09 1.03L9.25 4.636v8.614z" /><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" /></svg>
+                            <span>Guardar Transcripción</span>
+                        </button>
+                    </div>
+                    <div id="professor-question-view" class="hidden flex-grow flex flex-col">
+                        <div id="question-display" class="w-full flex-grow p-4 bg-slate-100 border border-slate-200 rounded-lg flex items-center justify-center text-slate-500">
+                            <span>Esperando preguntas...</span>
+                        </div>
+                        <button id="read-question-btn" class="w-full mt-3 bg-slate-700 text-white font-bold py-3 rounded-lg hover:bg-slate-800 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors" disabled>Leer Pregunta</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+     // << CAMBIO REALIZADO AQUÍ >>
+      const API_URL = 'https://puente-auditivo-backend.onrender.com';
+
+        // --- **INICIO DE LA MODIFICACIÓN** ---
+
+        let socket; // Declaramos el socket aquí, pero no lo inicializamos
+
+        // --- GESTIÓN DE PANTALLAS Y SESIÓN (Sin cambios) ---
+        const screens = document.querySelectorAll('.screen');
+        const showScreen = (screenId) => {
+            screens.forEach(screen => {
+                screen.style.display = screen.id === screenId ? 'block' : 'none';
+            });
+        };
+        const storeSession = (sessionData) => localStorage.setItem('session', JSON.stringify(sessionData));
+        const getSession = () => JSON.parse(localStorage.getItem('session'));
+        const clearSession = () => {
+            localStorage.removeItem('session');
+            if (socket) {
+                socket.disconnect(); // Desconectar el socket al cerrar sesión
+            }
+        };
+
+        // --- LÓGICA DE SOCKET.IO ---
+        // Esta función inicializa el socket y configura todos los listeners.
+        // Se llamará solo DESPUÉS de un login exitoso.
+        const initializeSocket = () => {
+            const session = getSession();
+            if (!session || !session.token) {
+                console.error("No se puede inicializar el socket sin un token.");
+                return;
+            }
+
+            // Conectamos al servidor pasando el token para la autenticación
+            socket = io(API_URL, {
+                auth: {
+                    token: session.token
+                }
+            });
+
+            // Configurar todos los listeners del socket aquí
+            socket.on('connect_error', (err) => {
+                console.error("Error de conexión con el socket:", err.message);
+                alert("No se pudo conectar con el servidor en tiempo real. Por favor, inicie sesión de nuevo.");
+                clearSession();
+                showScreen('login-screen');
+            });
+            
+            socket.on('session_created', (sessionId) => {
+                currentSessionId = sessionId;
+                enterClassroom();
+            });
+
+            socket.on('join_success', (sessionId) => {
+                currentSessionId = sessionId;
+                enterClassroom();
+            });
+            
+            socket.on('join_error', (message) => alert(message));
+
+            socket.on('transcript_updated', (transcript) => {
+                const transcriptBox = document.getElementById('transcript-box');
+                transcriptBox.value = transcript;
+                transcriptBox.scrollTop = transcriptBox.scrollHeight;
+            });
+
+            socket.on('question_received', (question) => {
+                if (currentUserRole === 'professor') {
+                    const questionDisplay = document.getElementById('question-display');
+                    const readQuestionBtn = document.getElementById('read-question-btn');
+                    questionDisplay.textContent = question;
+                    readQuestionBtn.disabled = false;
+                }
+            });
+
+            // =============================================================================
+            // CAMBIO 3: AÑADIR EL LISTENER QUE REACCIONA A CAMBIOS DE ESTADO DE DESCARGA
+            // =============================================================================
+            socket.on('download_status_updated', (isEnabled) => {
+                const toggleBtn = document.getElementById('toggle-download-btn');
+                const studentSaveBtn = document.getElementById('student-save-btn');
+                
+                // Actualizar UI del profesor
+                if (toggleBtn) {
+                    toggleBtn.textContent = isEnabled ? 'Desactivar Descargas' : 'Activar Descargas';
+                    toggleBtn.classList.toggle('bg-green-500', isEnabled);
+                    toggleBtn.classList.toggle('bg-orange-500', !isEnabled);
+                }
+                // Actualizar UI del estudiante
+                if (studentSaveBtn) {
+                    studentSaveBtn.style.display = isEnabled ? 'flex' : 'none';
+                }
+            });
+        };
+
+        // --- INICIALIZACIÓN DE LA APP ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const session = getSession();
+            if (session && session.token) {
+                initializeSocket(); // Si ya hay sesión, inicializamos el socket
+                showDashboard(session.user.role);
+            } else {
+                showScreen('login-screen');
+            }
+        });
+
+        // --- LÓGICA DE AUTENTICACIÓN (Frontend Real) ---
+        const loginForm = document.getElementById('login-form');
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const loginError = document.getElementById('login-error');
+
+            try {
+                const response = await fetch(`${API_URL}/api/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    storeSession(data);
+                    initializeSocket(); // **PUNTO CLAVE**: Inicializar socket DESPUÉS del login
+                    showDashboard(data.user.role);
+                    loginError.classList.add('hidden');
+                } else {
+                    loginError.textContent = data.message || 'Credenciales incorrectas.';
+                    loginError.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error de conexión:', error);
+                loginError.textContent = 'No se pudo conectar con el servidor.';
+                loginError.classList.remove('hidden');
+            }
+        });
+        
+        // --- El resto del script sigue igual, ya que los listeners de los botones
+        // usarán la variable `socket` que ahora se inicializa correctamente.
+
+        let currentSessionId = null;
+        let currentUserRole = null;
+        
+        const showDashboard = (role) => {
+            if (role === 'admin') {
+                showScreen('admin-dashboard-screen');
+                loadUsers();
+            } else if (role === 'professor') {
+                showScreen('professor-dashboard-screen');
+            } else if (role === 'student' || role === 'student_special') {
+                showScreen('student-dashboard-screen');
+            }
+        };
+
+        const createUserForm = document.getElementById('create-user-form');
+        createUserForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('new-user-email').value;
+            const password = document.getElementById('new-user-password').value;
+            const role = document.getElementById('new-user-role').value;
+            const feedback = document.getElementById('admin-action-feedback');
+
+            try {
+                const response = await fetch(`${API_URL}/api/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, role })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    feedback.textContent = `Usuario ${data.email} creado con éxito.`;
+                    setTimeout(() => feedback.textContent = '', 3000);
+                    loadUsers();
+                    createUserForm.reset();
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                alert('Error al crear el usuario.');
+            }
+        });
+
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${API_URL}/api/users`);
+                const users = await response.json();
+                const userList = document.getElementById('user-list');
+                userList.innerHTML = '';
+                
+                users.forEach(user => {
+                    const userDiv = document.createElement('div');
+                    userDiv.className = 'flex justify-between items-center p-2 border rounded';
+                    userDiv.innerHTML = `
+                        <span>${user.email} (${user.role})</span>
+                        <button class="text-red-500 hover:text-red-700" onclick="deleteUser('${user.id}')">Eliminar</button>
+                    `;
+                    userList.appendChild(userDiv);
+                });
+            } catch (error) {
+                console.error('Error cargando usuarios:', error);
+            }
+        }
+        
+        async function deleteUser(userId) {
+            if (!confirm('¿Estás seguro de que quieres eliminar este usuario?')) return;
+            try {
+                const response = await fetch(`${API_URL}/api/users/${userId}`, { method: 'DELETE' });
+                if (response.ok) {
+                    loadUsers();
+                } else {
+                    alert('No se pudo eliminar el usuario.');
+                }
+            } catch (error) {
+                alert('Error al eliminar el usuario.');
+            }
+        }
+
+        document.getElementById('create-session-btn').addEventListener('click', () => {
+            currentUserRole = getSession().user.role;
+            if (socket) socket.emit('create_session');
+        });
+
+        document.getElementById('join-session-btn').addEventListener('click', () => {
+            const sessionId = document.getElementById('session-id-input').value.trim().toUpperCase();
+            if (sessionId) {
+                currentUserRole = getSession().user.role;
+                if (socket) socket.emit('join_session', sessionId);
+            }
+        });
+        
+        document.getElementById('leave-session-btn').addEventListener('click', () => {
+            if (socket) socket.emit('leave_session', currentSessionId);
+            showDashboard(getSession().user.role);
+        });
+
+        const enterClassroom = () => {
+            showScreen('classroom-screen');
+            document.getElementById('session-id-display').textContent = currentSessionId;
+            
+            document.getElementById('professor-controls').style.display = currentUserRole === 'professor' ? 'flex' : 'none';
+            document.getElementById('professor-question-view').style.display = currentUserRole === 'professor' ? 'flex' : 'none';
+            
+            document.getElementById('student-controls').style.display = (currentUserRole === 'student' || currentUserRole === 'student_special') ? 'flex' : 'none';
+
+            const transcriptBox = document.getElementById('transcript-box');
+            transcriptBox.readOnly = (currentUserRole !== 'professor');
+            
+            transcriptBox.value = "Esperando la transcripción...";
+            document.getElementById('question-display').innerHTML = '<span class="text-slate-500">Esperando preguntas...</span>';
+
+            transcriptBox.addEventListener('input', () => {
+                if (currentUserRole === 'professor') {
+                    if (isRecognizing) {
+                        recognition_manually_stopped = true;
+                        recognition.stop();
+                    }
+                    if (socket) socket.emit('update_transcript', { 
+                        sessionId: currentSessionId, 
+                        text: transcriptBox.value 
+                    });
+                }
+            });
+        };
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        let isRecognizing = false;
+        let final_transcript = ''; 
+        let recognition_manually_stopped = false;
+        let micInitialized = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'es-ES';
+
+            recognition.onstart = () => {
+                isRecognizing = true;
+                recognition_manually_stopped = false;
+                document.getElementById('mic-text').textContent = 'Detener';
+                document.getElementById('mic-indicator').classList.remove('hidden');
+            };
+
+            recognition.onend = () => {
+                isRecognizing = false;
+                document.getElementById('mic-text').textContent = 'Iniciar';
+                document.getElementById('mic-indicator').classList.add('hidden');
+                
+                if (!recognition_manually_stopped) {
+                    console.log('Reinicio automático de la transcripción...');
+                    recognition.start();
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Error en el reconocimiento de voz:', event.error);
+            };
+
+            recognition.onresult = (event) => {
+                let interim_transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        final_transcript += event.results[i][0].transcript;
+                    } else {
+                        interim_transcript += event.results[i][0].transcript;
+                    }
+                }
+                
+                const full_transcript = final_transcript + interim_transcript;
+                
+                if (socket) socket.emit('update_transcript', { sessionId: currentSessionId, text: full_transcript });
+            };
+        }
+        
+        document.getElementById('mic-btn').addEventListener('click', () => {
+            if (!recognition) return;
+
+            if (isRecognizing) {
+                recognition_manually_stopped = true;
+                recognition.stop();
+            } else {
+                const startRecognition = () => {
+                    final_transcript = ''; 
+                    if (socket) socket.emit('clear_transcript', currentSessionId);
+                    recognition.start();
+                };
+
+                if (!micInitialized) {
+                    const constraints = {
+                        audio: { noiseSuppression: true, echoCancellation: true },
+                        video: false
+                    };
+                    navigator.mediaDevices.getUserMedia(constraints)
+                        .then(stream => {
+                            stream.getTracks().forEach(track => track.stop());
+                            micInitialized = true;
+                            startRecognition();
+                        })
+                        .catch(err => {
+                            micInitialized = true;
+                            startRecognition();
+                        });
+                } else {
+                    startRecognition();
+                }
+            }
+        });
+        
+        document.getElementById('send-question-btn').addEventListener('click', () => {
+            const question = document.getElementById('question-input').value;
+            if (question && socket) {
+                socket.emit('send_question', { sessionId: currentSessionId, text: question });
+                document.getElementById('question-input').value = '';
+            }
+        });
+        
+        document.getElementById('read-question-btn').addEventListener('click', () => {
+            const question = document.getElementById('question-display').textContent;
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(question);
+                utterance.lang = 'es-ES';
+                window.speechSynthesis.speak(utterance);
+            }
+        });
+        
+        document.querySelectorAll('#admin-logout-btn, #prof-logout-btn, #stud-logout-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                clearSession();
+                showScreen('login-screen');
+            });
+        });
+
+        const handleSaveClass = () => {
+            const textToSave = document.getElementById('transcript-box').value;
+            if (!textToSave.trim()) {
+                alert('La transcripción está vacía. No hay nada que guardar.');
+                return;
+            }
+            const now = new Date();
+            const filename = `clase_puente_auditivo_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}.txt`;
+            const blob = new Blob([textToSave], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        };
+
+        document.querySelectorAll('.save-class-btn').forEach(button => {
+            button.addEventListener('click', handleSaveClass);
+        });
+
+        // =============================================================================
+        // CAMBIO 3: AÑADIR EL EVENT LISTENER PARA EL NUEVO BOTÓN DEL PROFESOR
+        // =============================================================================
+        document.getElementById('toggle-download-btn').addEventListener('click', () => {
+            if (socket) {
+                socket.emit('toggle_downloads', currentSessionId);
+            }
+        });
+
+    </script>
+</body>
+</html>
