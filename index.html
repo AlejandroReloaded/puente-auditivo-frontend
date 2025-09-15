@@ -111,7 +111,7 @@
                 <div class="bg-white p-8 rounded-2xl shadow-md">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold text-slate-700">Transcripción en Vivo</h2>
-                        <div id="professor-controls" class="hidden flex items-center gap-3">
+                        <div id="professor-controls" class="hidden flex items-center gap-3 flex-wrap">
                             <button id="mic-btn" class="flex items-center gap-2 bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-emerald-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
                                 <div id="mic-indicator" class="hidden recording-indicator"></div>
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" /><path d="M5.5 8.5a.5.5 0 01.5.5v1.5a4 4 0 004 4h0a4 4 0 004-4V9a.5.5 0 011 0v1.5a5 5 0 01-4.5 4.975V17h3a.5.5 0 010 1h-7a.5.5 0 010-1h3v-1.525A5 5 0 015 10.5V9a.5.5 0 01.5-.5z" /></svg>
@@ -173,23 +173,16 @@
         };
 
         // --- LÓGICA DE SOCKET.IO ---
-        // Esta función inicializa el socket y configura todos los listeners.
-        // Se llamará solo DESPUÉS de un login exitoso.
         const initializeSocket = () => {
             const session = getSession();
             if (!session || !session.token) {
                 console.error("No se puede inicializar el socket sin un token.");
                 return;
             }
-
-            // Conectamos al servidor pasando el token para la autenticación
             socket = io(API_URL, {
-                auth: {
-                    token: session.token
-                }
+                auth: { token: session.token }
             });
 
-            // Configurar todos los listeners del socket aquí
             socket.on('connect_error', (err) => {
                 console.error("Error de conexión con el socket:", err.message);
                 alert("No se pudo conectar con el servidor en tiempo real. Por favor, inicie sesión de nuevo.");
@@ -225,19 +218,19 @@
             });
 
             // =============================================================================
-            // CAMBIO 3: AÑADIR EL LISTENER QUE REACCIONA A CAMBIOS DE ESTADO DE DESCARGA
+            // CAMBIO 2: AÑADIR CONSOLE.LOG AL LISTENER DE SOCKET
             // =============================================================================
             socket.on('download_status_updated', (isEnabled) => {
+                console.log('Evento "download_status_updated" recibido del servidor. Nuevo estado:', isEnabled);
+                
                 const toggleBtn = document.getElementById('toggle-download-btn');
                 const studentSaveBtn = document.getElementById('student-save-btn');
                 
-                // Actualizar UI del profesor
                 if (toggleBtn) {
                     toggleBtn.textContent = isEnabled ? 'Desactivar Descargas' : 'Activar Descargas';
                     toggleBtn.classList.toggle('bg-green-500', isEnabled);
                     toggleBtn.classList.toggle('bg-orange-500', !isEnabled);
                 }
-                // Actualizar UI del estudiante
                 if (studentSaveBtn) {
                     studentSaveBtn.style.display = isEnabled ? 'flex' : 'none';
                 }
@@ -248,7 +241,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const session = getSession();
             if (session && session.token) {
-                initializeSocket(); // Si ya hay sesión, inicializamos el socket
+                initializeSocket(); 
                 showDashboard(session.user.role);
             } else {
                 showScreen('login-screen');
@@ -274,7 +267,7 @@
 
                 if (response.ok) {
                     storeSession(data);
-                    initializeSocket(); // **PUNTO CLAVE**: Inicializar socket DESPUÉS del login
+                    initializeSocket(); 
                     showDashboard(data.user.role);
                     loginError.classList.add('hidden');
                 } else {
@@ -288,9 +281,6 @@
             }
         });
         
-        // --- El resto del script sigue igual, ya que los listeners de los botones
-        // usarán la variable `socket` que ahora se inicializa correctamente.
-
         let currentSessionId = null;
         let currentUserRole = null;
         
@@ -548,11 +538,15 @@
         });
 
         // =============================================================================
-        // CAMBIO 3: AÑADIR EL EVENT LISTENER PARA EL NUEVO BOTÓN DEL PROFESOR
+        // CAMBIO 3: AÑADIR CONSOLE.LOG AL EVENT LISTENER DEL BOTÓN
         // =============================================================================
         document.getElementById('toggle-download-btn').addEventListener('click', () => {
+            console.log('Botón "Activar Descargas" fue presionado.');
             if (socket) {
+                console.log('Socket existe. Enviando evento toggle_downloads para la sesión:', currentSessionId);
                 socket.emit('toggle_downloads', currentSessionId);
+            } else {
+                console.error('Error: El socket no existe al hacer clic.');
             }
         });
 
