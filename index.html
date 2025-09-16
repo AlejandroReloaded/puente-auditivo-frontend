@@ -441,20 +441,34 @@
                 console.error('Error en el reconocimiento de voz:', event.error);
             };
 
+            // =============================================================================
+            // ========= INICIO DEL CÓDIGO CORREGIDO PARA LA TRANSCRIPCIÓN =========
+            // =============================================================================
             recognition.onresult = (event) => {
                 let interim_transcript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                let final_transcript_rebuilt = ''; // Variable local para reconstruir el texto
+
+                // La corrección clave: el bucle SIEMPRE empieza desde el principio (i = 0)
+                // para re-evaluar todo lo que se ha dicho.
+                for (let i = 0; i < event.results.length; ++i) {
+                    const transcript_piece = event.results[i][0].transcript;
                     if (event.results[i].isFinal) {
-                        final_transcript += event.results[i][0].transcript;
+                        final_transcript_rebuilt += transcript_piece;
                     } else {
-                        interim_transcript += event.results[i][0].transcript;
+                        interim_transcript += transcript_piece;
                     }
                 }
-                
+
+                // Se actualiza la variable global con el texto reconstruido y limpio.
+                final_transcript = final_transcript_rebuilt;
+
+                // Se envía el texto completo y correcto al servidor.
                 const full_transcript = final_transcript + interim_transcript;
-                
                 if (socket) socket.emit('update_transcript', { sessionId: currentSessionId, text: full_transcript });
             };
+            // =============================================================================
+            // ========= FIN DEL CÓDIGO CORREGIDO PARA LA TRANSCRIPCIÓN =========
+            // =============================================================================
         }
         
         document.getElementById('mic-btn').addEventListener('click', () => {
