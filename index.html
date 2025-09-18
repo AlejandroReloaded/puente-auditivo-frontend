@@ -14,7 +14,10 @@
         .brand-primary { background-color: #8D5B4C; }
         .brand-primary-hover:hover { background-color: #7a4e40; }
         .text-brand { color: #5D4037; }
-        .focus-brand:focus { ring-color: #D3A37F; }
+        .focus-brand:focus {
+    outline: none; /* Opcional: Elimina el borde de foco por defecto del navegador */
+    box-shadow: 0 0 0 3px #D3A37F; /* Crea un "anillo" de 3px con tu color */
+}
 
         .recording-indicator { width: 10px; height: 10px; background-color: red; border-radius: 50%; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
