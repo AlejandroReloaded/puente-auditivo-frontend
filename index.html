@@ -149,14 +149,10 @@
     </div>
 
     <script>
-     // << CAMBIO REALIZADO AQUÍ >>
-      const API_URL = 'https://puente-auditivo-backend.onrender.com';
+        const API_URL = 'https://puente-auditivo-backend.onrender.com';
 
-        // --- **INICIO DE LA MODIFICACIÓN** ---
+        let socket;
 
-        let socket; // Declaramos el socket aquí, pero no lo inicializamos
-
-        // --- GESTIÓN DE PANTALLAS Y SESIÓN (Sin cambios) ---
         const screens = document.querySelectorAll('.screen');
         const showScreen = (screenId) => {
             screens.forEach(screen => {
@@ -168,11 +164,10 @@
         const clearSession = () => {
             localStorage.removeItem('session');
             if (socket) {
-                socket.disconnect(); // Desconectar el socket al cerrar sesión
+                socket.disconnect();
             }
         };
 
-        // --- LÓGICA DE SOCKET.IO ---
         const initializeSocket = () => {
             const session = getSession();
             if (!session || !session.token) {
@@ -217,9 +212,6 @@
                 }
             });
 
-            // =============================================================================
-            // CAMBIO 2: AÑADIR CONSOLE.LOG AL LISTENER DE SOCKET
-            // =============================================================================
             socket.on('download_status_updated', (isEnabled) => {
                 console.log('Evento "download_status_updated" recibido del servidor. Nuevo estado:', isEnabled);
                 
@@ -237,7 +229,6 @@
             });
         };
 
-        // --- INICIALIZACIÓN DE LA APP ---
         document.addEventListener('DOMContentLoaded', () => {
             const session = getSession();
             if (session && session.token) {
@@ -248,7 +239,6 @@
             }
         });
 
-        // --- LÓGICA DE AUTENTICACIÓN (Frontend Real) ---
         const loginForm = document.getElementById('login-form');
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -551,9 +541,6 @@
             button.addEventListener('click', handleSaveClass);
         });
 
-        // =============================================================================
-        // CAMBIO 3: AÑADIR CONSOLE.LOG AL EVENT LISTENER DEL BOTÓN
-        // =============================================================================
         document.getElementById('toggle-download-btn').addEventListener('click', () => {
             console.log('Botón "Activar Descargas" fue presionado.');
             if (socket) {
